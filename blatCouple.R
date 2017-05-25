@@ -6,7 +6,7 @@ suppressMessages(library("pander"))
 code_dir <- dirname(
   sub("--file=", "", grep("--file=", commandArgs(trailingOnly = FALSE), value = TRUE)))
   
-#' Set up and gather command line arguments
+# Set up and gather command line arguments
 parser <- ArgumentParser(
   description = "R-based nucleotide sequence coupler for paired-end sequences aligned by BLAT.")
 parser$add_argument(
@@ -50,11 +50,43 @@ parser$add_argument(
   help = "Regular expression for pattern matching read names. Should not contain R1/R2/I1/I2 specific components. Default is [\\w:-]+")
 
 args <- parser$parse_args(commandArgs(trailingOnly = TRUE))
-  
 
+# Argument Conditionals
 
+# Print Inputs to terminal
+input_table <- data.frame(
+  "Variables" = paste0(names(args), " :"), 
+  "Values" = sapply(1:length(args), function(i){
+    paste(args[[i]], collapse = ", ")}))
+input_table <- input_table[
+  match(c("anchorPSL :", "adriftPSL :", "key :", "uniqOutput :", "condSites :", 
+          "chimeras :", "multihits :", "refGenome :", "maxAlignStart :", 
+          "minPercentIdenity :", "minTempLength :", "maxTempLength :", 
+          "readNamePattern :"),
+        input_table$Variables),]
+pandoc.title("blatCoupleR Inputs")
+pandoc.table(data.frame(input_table, row.names = NULL), 
+             justify = c("left", "left"), 
+             split.tables = Inf)
 
+# Load additional R-packages for analysis and processing
+addPacks <- c("stringr", "GenomicRanges", "igraph", "data.table", "Matrix")
+addPacksLoaded <- suppressMessages(
+  sapply(addPacks, require, character.only = TRUE))
+if(!all(addPacksLoaded)){
+  pandoc.table(data.frame(
+    "R-Packages" = names(addPacksLoaded), 
+    "Loaded" = addPacksLoaded, 
+    row.names = NULL))
+  stop("Check dependancies.")
+}
 
+# Load supporting scripts
+source(file.path(
+  code_dir, "supporting_scripts", ""))
+if(!all(c("trim_leading", "trim_overreading", "write_seq_files") %in% ls())){
+  stop("Cannot load supporting scripts. You may need to clone from github again.")
+}
 
 
 
