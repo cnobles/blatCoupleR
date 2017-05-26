@@ -11,7 +11,7 @@ panderHead <- function(object, title = NULL, caption = NULL, row.names = FALSE){
   stopifnot(!class(object) == "list")
   if(!is.null(title)) pandoc.title(title)
   
-  if(row.names){
+  if(!row.names){
     df <- as.data.frame(head(object), row.names = NULL)
   }else{
     df <- as.data.frame(head(object))

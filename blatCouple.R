@@ -356,7 +356,14 @@ paired_loci <- GRanges(
       strand(anchor_loci) == "+", end(adrift_loci), end(anchor_loci))),
   strand = strand(anchor_loci),
   lociPairKey = loci_key$lociPairKey)
-  
+
+# Information on valid paired alignments from all sequences present.
+panderHead(
+  paired_loci,
+  title = "Head of valid paired loci present in the data.",
+  caption = sprintf("Possible genomic loci: %s", length(paired_loci)))
+
+# Remove anchor:adrift pairings that do not appear in the sequence data  
 paired_loci$readPairKeys <- CharacterList(lapply(
   1:length(paired_loci), 
   function(i){
@@ -366,19 +373,12 @@ paired_loci$readPairKeys <- CharacterList(lapply(
       "readPairKey"]
 }))
   
-# Remove anchor:adrift pairings that do not appear in the sequence data
 paired_loci <- paired_loci[sapply(paired_loci$readPairKeys, length) > 0]
 
 # Stop if there are no paired_loci
 if(length(paired_loci) == 0){
   stop("No valid paired genomic loci were found within the data given input criteria.")
 }
-
-# Information on valid paired alignments from all sequences present.
-panderHead(
-  paired_loci,
-  title = "Head of valid paired loci present in the data.",
-  caption = sprintf("Total genomic loci: %s", length(paired_loci)))
 
 #' Expand readPairKeys and lociPairKeys to make a single object that maps loci
 #' to unique sequences. This is analogous to a sparse matrix, but in a 
@@ -482,7 +482,7 @@ if(!is.null(args$condSites)){
   
 #' Clean up environment for expansion and clustering of multihits
 rm(uniq_read_loci_mat, uniq_templates, uniq_keys, 
-   uniq_reads, uniq_sites, cond_sites)
+   uniq_reads, uniq_sites)
 gc()
   
 #' ########## IDENTIFY MULTIPLY-PAIRED READS (multihits) ##########
@@ -599,5 +599,14 @@ if(!is.null(args$multihits) & length(multihit_read_pairs) > 0){
     "clustered_multihit_lengths")
   
   writeOutputFile(multihitData, file = args$multihits)
+  
+  pandoc.table(
+    data.frame(
+      "multihit_reads" = length(unique(names(unclustered_multihits))),
+      "multihit_alignments" = length(unique(unclustered_multihits)),
+      "multihit_clusters" = length(clustered_multihit_positions),
+      "multihit_lengths" = sum(sapply(clustered_multihit_lengths, length))),
+    style = "simple",
+    split.tables = Inf)
 }
 q()
