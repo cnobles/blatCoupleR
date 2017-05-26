@@ -15,7 +15,7 @@ readPSL <- function(pslFile, toNull = NULL) {
   
   psl <- lapply(pslFile, function(f) {
     message("Reading ",f)
-    data.table::fread(paste("zcat", f), sep = "\t")
+    suppressMessages(data.table::fread(paste("zcat", f), sep = "\t"))
   })
   psl <- data.table::rbindlist(psl)
   colnames(psl) <- cols

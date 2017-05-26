@@ -25,7 +25,7 @@ processBLATData <- function(algns, from, refGenome){
                         start = (algns$qtStart + 1), 
                         end = (algns$qtEnd)), #Convert to 1-base
                       strand=Rle(algns$strand),
-                      seqinfo=seqinfo(get_reference_genome(refGenome)))
+                      seqinfo=seqinfo(refGenome))
   
   mcols(algns.gr) <- algns[,c("from", "qName", "matches", "repMatches", 
                               "misMatches", "qStart", "qEnd", "qSize", 

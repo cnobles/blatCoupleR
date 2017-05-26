@@ -3,6 +3,14 @@ options(stringsAsFactors = FALSE)
 suppressMessages(library("argparse"))
 suppressMessages(library("pander"))
 
+#' For those reviewing the code below, the following is a small style guide 
+#' outlining the various formats for the code. 
+#' 
+#' Names with "_": objects, inlucding data.frames, GRanges, vectors, ...
+#' Names in caMel format: functions or components of objects (i.e. columns 
+#' within a data.frame).
+#' Names with ".": arguments / options for functions
+
 code_dir <- dirname(
   sub("--file=", "", grep("--file=", commandArgs(trailingOnly = FALSE), value = TRUE)))
   
@@ -37,7 +45,7 @@ parser$add_argument(
   "--maxAlignStart", nargs = 1, type = "integer", default = 5L,
   help = "Maximum allowable distance from the start of the sequence to keep the alignment. Default = 5.")
 parser$add_argument(
-  "--minPercentIdenity", nargs = 1, type = "integer", default = 95L,
+  "--minPercentIdentity", nargs = 1, type = "integer", default = 95L,
   help = "Minimal global (whole sequence) percent identity required to keep alignment. Default = 95 (0-100).")
 parser$add_argument(
   "--minTempLength", nargs = 1, type = "integer", default = 30L,
@@ -51,6 +59,11 @@ parser$add_argument(
 
 args <- parser$parse_args(commandArgs(trailingOnly = TRUE))
 
+setwd("~/data/projects/guideseq_analysis/170522_clinical_specimen_run")
+code_dir <- "~/dev/scripts/blatCoupleR"
+debug <- c("aligned/R2C6-pos-1.r2.psl.gz", "aligned/R2C6-pos-1.r1.psl.gz", "-k", "consolidated/R2C6-pos-1.key.r2.csv", "consolidated/R2C6-pos-1.key.r1.csv", "-o", "test.csv")
+args <- parser$parse_args(debug)
+
 # Argument Conditionals
 
 # Print Inputs to terminal
@@ -61,13 +74,14 @@ input_table <- data.frame(
 input_table <- input_table[
   match(c("anchorPSL :", "adriftPSL :", "keys :", "uniqOutput :", "condSites :", 
           "chimeras :", "multihits :", "refGenome :", "maxAlignStart :", 
-          "minPercentIdenity :", "minTempLength :", "maxTempLength :", 
+          "minPercentIdentity :", "minTempLength :", "maxTempLength :", 
           "readNamePattern :"),
         input_table$Variables),]
 pandoc.title("blatCoupleR Inputs")
 pandoc.table(data.frame(input_table, row.names = NULL), 
              justify = c("left", "left"), 
-             split.tables = Inf)
+             split.tables = Inf,
+             style = "simple")
 
 # Load additional R-packages for analysis and processing
 add_packs <- c("stringr", "GenomicRanges", "igraph", 
@@ -84,6 +98,8 @@ if(!all(add_packs_loaded)){
 
 # Load supporting scripts
 source(file.path(
+  code_dir, "supporting_scripts", "panderHead.R"))
+source(file.path(
   code_dir, "supporting_scripts", "readKeyFile.R"))
 source(file.path(
   code_dir, "supporting_scripts", "readPSL.R"))
@@ -95,7 +111,7 @@ source(file.path(
   code_dir, "supporting_scripts", "condenseSites.R"))
 source(file.path(
   code_dir, "supporting_scripts", "writeOutputFile.R"))
-if(!all(c("readKeyFile", "readPSL", "qualityFilter", 
+if(!all(c("panderHead", "readKeyFile", "readPSL", "qualityFilter", 
           "processBLATData", "condenseSites", "writeOutputFile") %in% ls())){
   stop("Cannot load supporting scripts. You may need to clone from github again.")
 }
@@ -117,37 +133,51 @@ refGenome <- get(genome)
 ## Load and process alignment data ##
 # Create single key file if one for each alignment file.
 if(length(args$keys) > 1){
-  anch_key_type <- str_extract(args$keys[1], "[\\w]+$")
-  if(!keyType %in% c("csv", "tsv", "rds", "RData")){
+  anchor_key_type <- str_extract(args$keys[1], "[\\w]+$")
+  if(!anchor_key_type %in% c("csv", "tsv", "rds", "RData")){
     stop("Output key file type not supported. Please use csv, tsv, rds, or RData.")
   }
-  anch_keys <- readKeyFile(args$keys[1], format = anch_key_type)
+  anchor_keys <- readKeyFile(args$keys[1], format = anchor_key_type)
   
-  adri_key_type <- str_extract(args$key[2], "[\\w]+$")
-  if(!keyType %in% c("csv", "tsv", "rds", "RData")){
+  adrift_key_type <- str_extract(args$key[2], "[\\w]+$")
+  if(!adrift_key_type %in% c("csv", "tsv", "rds", "RData")){
     stop("Output key file type not supported. Please use csv, tsv, rds, or RData.")
   }
-  adri_keys <- readKeyFile(args$keys[2], format = adri_key_type)
+  adrift_keys <- readKeyFile(args$keys[2], format = adrift_key_type)
   
-  stopifnot(all(names(anch_keys) %in% c("readName", "seqID")))
-  stopifnot(all(names(adri_keys) %in% c("readName", "seqID")))
+  stopifnot(all(c("readNames", "seqID") %in% names(anchor_keys)))
+  stopifnot(all(c("readNames", "seqID") %in% names(adrift_keys)))
   
   # Verify readNames are in the same format.
-  anch_keys$readName <- str_extract(anch_keys$readName, args$readNamePattern)
-  adri_keys$readName <- str_extract(adri_keys$readName, args$readNamePattern)
+  anchor_keys$readNames <- str_extract(
+    anchor_keys$readNames, args$readNamePattern)
+  adrift_keys$readNames <- str_extract(
+    adrift_keys$readNames, args$readNamePattern)
   
   # Only interested in reads in common between the two.
-  common_names <- intersect(anch_keys$readNames, adri_keys$readNames)
-  anch_keys <- anch_keys[anch_keys$readNames %in% common_names,]
-  adri_keys <- adri_keys[adri_keys$readNames %in% common_names,]
+  common_names <- intersect(anchor_keys$readNames, adrift_keys$readNames)
+  anchor_keys <- anchor_keys[anchor_keys$readNames %in% common_names,]
+  adrift_keys <- adrift_keys[adrift_keys$readNames %in% common_names,]
   
   # Create a common key
-  adri_keys <- adri_keys[match(anch_keys$readName, adri_keys$readName),]
+  adrift_keys <- adrift_keys[match(anchor_keys$readNames, adrift_keys$readNames),]
   keys <- data.frame(
-    "readNames" = anch_keys$readNames,
-    "anchorSeqID" = anch_keys$seqID,
-    "adriftSeqID" = adri_keys$seqID,
-    "readPairKey" = paste0(anch_keys$seqID, ":", adri_keys$seqID))
+    "readNames" = anchor_keys$readNames,
+    "anchorSeqID" = factor(anchor_keys$seqID),
+    "adriftSeqID" = factor(adrift_keys$seqID))
+  
+  keys$anchorKey <- as.integer(keys$anchorSeqID)
+  keys$adriftKey <- as.integer(keys$adriftSeqID)
+  keys$readPairKey <- paste0(keys$anchorKey, ":", keys$adriftKey)
+  
+  # Print beginning of keys
+  panderHead(
+    keys, 
+    title = "Beginning of Key for relating reads to sequences.",
+    caption = paste0(
+      "\tReads: ", length(unique(keys$readNames)), 
+      "\n\tUnique Pairings: ", length(unique(keys$readPairKey))))
+  
 }else if(length(args$key) == 1){
   key_type <- str_extract(args$keys, "[\\w]+$")
   if(!keys_type %in% c("csv", "tsv", "rds", "RData")){
@@ -155,40 +185,96 @@ if(length(args$keys) > 1){
   }
   keys <- readKeyFile(args$keys, format = key_type)
   stopifnot(all(c("readNames", "anchorSeqID", "adriftSeqID") %in% names(keys)))
-  keys$readPairKey <- paste0(keys$anchorSeqID, ":", keys$adriftSeqID)
+  keys$anchorSeqID <- factor(keys$anchorSeqID)
+  keys$adriftSeqID <- factor(keys$adriftSeqID)
+  keys$anchorKey <- as.integer(keys$anchorSeqID)
+  keys$adriftKey <- as.integer(keys$adriftSeqID)
+  keys$readPairKey <- paste0(keys$anchorKey, ":", keys$adriftKey)
+
+  # Print beginning of keys
+  panderHead(
+    keys, 
+    title = "Beginning of Key for relating reads to sequences.",
+    caption = paste0(
+      "\tReads: ", length(unique(keys$readNames)), 
+      "\n\tUnique Pairings: ", length(unique(keys$readPairKey))))
+
 }else if(length(args$keys) > 2){
   stop("Cannot have more key files than sequence alignment files.")
 }
 
 # Load psl files and filter reads based on inputs
-anch_hits <- readPSL(args$anchorPSL)
-adri_hits <- readPSL(args$adriftPSL)
-  
+anchor_hits <- readPSL(args$anchorPSL)
+adrift_hits <- readPSL(args$adriftPSL)
+
+# Print out basic alignment info.
+pander(sprintf(
+  "Anchor Alignments: %1$s from %2$s reads", 
+  nrow(anchor_hits),
+  length(unique(anchor_hits$qName))))
+
+pander(sprintf(
+  "Adrift Alignments: %1$s from %2$s reads", 
+  nrow(adrift_hits),
+  length(unique(adrift_hits$qName))))
+
+# Stop if there are no alignments to couple.
+if(nrow(anchor_hits) == 0 | nrow(adrift_hits) == 0){
+  stop("No sequences aligned for at least one of the sequence pairs.")}
+
+# Remove alignments that do not appear in the keys (single reads filtered out)
+anchor_hits <- anchor_hits[anchor_hits$qName %in% levels(keys$anchorSeqID),]
+adrift_hits <- adrift_hits[adrift_hits$qName %in% levels(keys$adriftSeqID),]
+
 # Quality filter and convert alignments from data.frame to GRanges
-anch_hits <- qualityFilter(
-  anch_hits, args$maxAlignStart, args$minPercentIdentity)
-anch_hits <- processBLATData(anch_hits, "anchor", refGenome)
+anchor_hits <- qualityFilter(
+  anchor_hits, args$maxAlignStart, args$minPercentIdentity)
+anchor_hits <- processBLATData(anchor_hits, "anchor", refGenome = refGenome)
+anchor_hits$anchorKey <- match(anchor_hits$qName, levels(keys$anchorSeqID))
   
-adri_hits <- qualityFilter(
-  adri_hits, args$maxAlignStart, args$minPercentIdentity)
-adri_hits <- processBLATData(adri_hits, "adrift", refGenome)
+adrift_hits <- qualityFilter(
+  adrift_hits, args$maxAlignStart, args$minPercentIdentity)
+adrift_hits <- processBLATData(adrift_hits, "adrift", refGenome = refGenome)
+adrift_hits$adriftKey <- match(adrift_hits$qName, levels(keys$adriftSeqID))
+
+# Info after quality filtering individual alignments.
+panderHead(
+  anchor_hits,
+  title = "Head of filtered anchor alignments.",
+  caption = sprintf(
+    "Alignments: %1$s from %2$s reads", 
+    length(anchor_hits), 
+    length(unique(anchor_hits$qName))))
+
+panderHead(
+  adrift_hits,
+  title = "Head of filtered adrift alignments.",
+  caption = sprintf(
+    "Alignments: %1$s from %2$s reads", 
+    length(adrift_hits), 
+    length(unique(adrift_hits$qName))))
+
+# Stop if no alignments passed filtering for individual sequences.
+if(length(anchor_hits) == 0 | length(adrift_hits) == 0){
+  stop("No alignments remaining after quality filtering for at least one of the sequence pairs.")
+}
 
 # All alignments should be either "+" or "-" strand.  
-stopifnot(all(strand(anch_hits) == "+" | strand(anch_hits) == "-"))
-stopifnot(all(strand(adri_hits) == "+" | strand(adri_hits) == "-"))
+stopifnot(all(strand(anchor_hits) == "+" | strand(anchor_hits) == "-"))
+stopifnot(all(strand(adrift_hits) == "+" | strand(adrift_hits) == "-"))
 
 # Identify all combinations of unique anchor and adrift sequences present in the data
-unique_key_pairs <- unique(keys[,c("anchorSeqID", "adriftSeqID", "readPairKey")])
+unique_key_pairs <- unique(keys[,c("anchorKey", "adriftKey", "readPairKey")])
 
 #' Reduced alignments identify the distinct genomic locations present in the 
 #' data for the adrift sequences (breakpoint positions) and anchor sequences 
 #' (integration site position). 
 #' Levels: Reads --> Unique Sequences --> Alignments --> Unique Genomic Loci
-red_anch_hits <- reduce(
-  flank(anch_hits, -1, start = TRUE), min.gapwidth = 0L, with.revmap = TRUE)
+red_anchor_hits <- reduce(
+  flank(anchor_hits, -1, start = TRUE), min.gapwidth = 0L, with.revmap = TRUE)
 
-red_adri_hits <- reduce(
-  flank(adri_hits, -1, start = TRUE), min.gapwidth = 0L, with.revmap = TRUE)
+red_adrift_hits <- reduce(
+  flank(adrift_hits, -1, start = TRUE), min.gapwidth = 0L, with.revmap = TRUE)
 
 #' The following finds all posible combinations of anchor and adrift loci which 
 #' meet criteria for pairing. These include: oneEach (each pairing must come 
@@ -200,102 +286,121 @@ red_adri_hits <- reduce(
 pairs <- findOverlaps(
   red_anchor_hits,
   red_adrift_hits,
-  maxgap = maxLength,
+  maxgap = args$maxTempLength,
   ignore.strand = TRUE
 )
   
-anchor.loci <- red_anch_hits[queryHits(pairs)]
-adrift.loci <- red_adri_hits[subjectHits(pairs)]
-  
-#' Check isDownstream and isOppositeStrand
-adrift.loci.starts <- start(adrift.loci)
-anchor.loci.starts <- start(anchor.loci)
-  
-adrift.loci.strand <- strand(adrift.loci)
-anchor.loci.strand <- strand(anchor.loci)
-  
-keep.loci <- ifelse(
-    anchor.loci.strand == "+", 
-    as.vector(adrift.loci.starts > anchor.loci.starts & 
-                adrift.loci.strand != anchor.loci.strand), 
-    as.vector(adrift.loci.starts < anchor.loci.starts & 
-                adrift.loci.strand != anchor.loci.strand))
+anchor_loci <- red_anchor_hits[queryHits(pairs)]
+adrift_loci <- red_adrift_hits[subjectHits(pairs)]
 
-keep.loci <- as.vector(
-  keep.loci & anchor.loci.strand != "*" & adrift.loci.strand != "*")
+#Stop if no alignments coupled based on criteria.
+if(length(pairs) == 0){
+  stop("No alignments coupled based on input criteria.")
+}
   
-anchor.loci <- anchor.loci[keep.loci]
-adrift.loci <- adrift.loci[keep.loci]
+# Check isDownstream and isOppositeStrand
+adrift_loci_starts <- start(adrift_loci)
+anchor_loci_starts <- start(anchor_loci)
+  
+adrift_loci_strand <- strand(adrift_loci)
+anchor_loci_strand <- strand(anchor_loci)
+  
+keep_loci <- ifelse(
+    anchor_loci_strand == "+", 
+    as.vector(adrift_loci_starts > anchor_loci_starts & 
+                adrift_loci_strand != anchor_loci_strand), 
+    as.vector(adrift_loci_starts < anchor_loci_starts & 
+                adrift_loci_strand != anchor_loci_strand))
+
+keep_loci <- as.vector(
+  keep_loci & anchor_loci_strand != "*" & adrift_loci_strand != "*")
+  
+anchor_loci <- anchor_loci[keep_loci]
+adrift_loci <- adrift_loci[keep_loci]
+
+# Stop if no loci were properly paired
+if(length(anchor_loci) == 0 | length(adrift_loci) == 0){
+  stop("No genomic loci from alignments were properly paired.")
+}
   
 #' Below, the code constructs a genomic loci key which links genomic loci to
 #' the various anchor and adrift sequences that were aligned.
-loci.key <- data.frame(
-  "anchor.loci" = queryHits(pairs)[keep.loci],
-  "adrift.loci" = subjectHits(pairs)[keep.loci])
-loci.key$lociPairKey <- paste0(loci.key$anchor.loci, ":", loci.key$adrift.loci)
+loci_key <- data.frame(
+  "anchorLoci" = queryHits(pairs)[keep_loci],
+  "adriftLoci" = subjectHits(pairs)[keep_loci])
+loci_key$lociPairKey <- paste0(loci_key$anchorLoci, ":", loci_key$adriftLoci)
 
-loci.key$anchor.qNames <- IntegerList(lapply(anchor.loci$revmap, function(x){
-  as.integer(anch_hits$qName[x])
-}))
+loci_key$anchorKey <- IRanges::IntegerList(
+  lapply(anchor_loci$revmap, function(x) as.integer(anchor_hits$anchorKey[x])))
   
-loci.key$adrift.qNames <- IntegerList(lapply(adrift.loci$revmap, function(x){
-  as.integer(adri_hits$qName[x])
-}))
+loci_key$adriftKey <- IRanges::IntegerList(
+  lapply(adrift_loci$revmap, function(x) as.integer(adrift_hits$adriftKey[x])))
   
-loci.key$anchor.readPairs <- IntegerList(lapply(
-  loci.key$anchor.qNames, function(x){
-    which(unique_key_pairs$anchorSeqID %in% x)
+loci_key$anchorReadPairs <- IRanges::IntegerList(lapply(
+  loci_key$anchorKey, function(x){
+    which(unique_key_pairs$anchorKey %in% x)
   }))
   
-loci.key$adrift.readPairs <- IntegerList(lapply(
-  loci.key$adrift.qNames, function(x){
-    which(unique_key_pairs$adriftSeqID %in% x)
+loci_key$adriftReadPairs <- IRanges::IntegerList(lapply(
+  loci_key$adriftKey, function(x){
+    which(unique_key_pairs$adriftKey %in% x)
 }))
 
 #' Using the range information from the filtered paired alignments, the code
-#' constructs a GRanges object from the anchor.loci and adrift.loci. anchor.loci
-#' are the integration site positions while the adrift.loci are the various 
+#' constructs a GRanges object from the anchor_loci and adrift_loci. anchor_loci
+#' are the integration site positions while the adrift_loci are the various 
 #' breakpoints. The strand of the range is set to the same strand as the 
-#' anchor.loci since the direction of sequencing from the viral or vector genome
+#' anchor_loci since the direction of sequencing from the viral or vector genome
 #' is from the U5-host junction found at the 3' end of the integrated element.
-paired.loci <- GRanges(
-  seqnames = seqnames(anchor.loci), 
+paired_loci <- GRanges(
+  seqnames = seqnames(anchor_loci), 
   ranges = IRanges(
     start = ifelse(
-      strand(anchor.loci) == "+", start(anchor.loci), start(adrift.loci)),
+      strand(anchor_loci) == "+", start(anchor_loci), start(adrift_loci)),
     end = ifelse(
-      strand(anchor.loci) == "+", end(adrift.loci), end(anchor.loci))),
-  strand = strand(anchor.loci),
-  lociPairKey = loci.key$lociPairKey)
+      strand(anchor_loci) == "+", end(adrift_loci), end(anchor_loci))),
+  strand = strand(anchor_loci),
+  lociPairKey = loci_key$lociPairKey)
   
-paired.loci$readPairKeys <- CharacterList(lapply(
-  1:length(paired.loci), 
+paired_loci$readPairKeys <- CharacterList(lapply(
+  1:length(paired_loci), 
   function(i){
     unique_key_pairs[intersect(
-      loci.key$anchor.readPairs[[i]], 
-      loci.key$adrift.readPairs[[i]]),
+      loci_key$anchorReadPairs[[i]], 
+      loci_key$adriftReadPairs[[i]]),
       "readPairKey"]
 }))
   
-#' Remove anchor:adrift pairings that do not appear in the sequence data
-paired.loci <- paired.loci[sapply(paired.loci$readPairKeys, length) > 0]
+# Remove anchor:adrift pairings that do not appear in the sequence data
+paired_loci <- paired_loci[sapply(paired_loci$readPairKeys, length) > 0]
+
+# Stop if there are no paired_loci
+if(length(paired_loci) == 0){
+  stop("No valid paired genomic loci were found within the data given input criteria.")
+}
+
+# Information on valid paired alignments from all sequences present.
+panderHead(
+  paired_loci,
+  title = "Head of valid paired loci present in the data.",
+  caption = sprintf("Total genomic loci: %s", length(paired_loci)))
 
 #' Expand readPairKeys and lociPairKeys to make a single object that maps loci
 #' to unique sequences. This is analogous to a sparse matrix, but in a 
 #' data.frame object. The keys object is still needed to jump from readPairKey
 #' to readName.
-read.loci.mat <- data.frame(
+read_loci_mat <- data.frame(
   "lociPairKey" = Rle(
-    values = paired.loci$lociPairKey,
-    lengths = sapply(paired.loci$readPairKeys, length)),
-  "readPairKey" = unlist(paired.loci$readPairKeys)
+    values = paired_loci$lociPairKey,
+    lengths = sapply(paired_loci$readPairKeys, length)),
+  "readPairKey" = unlist(paired_loci$readPairKeys)
 )
   
 #' Templates aligning to single loci are termed unique, while templates
 #' aligning to multiple loci are termed multihits.
-readPairCounts <- table(read.loci.mat$readPairKey)
-uniq.readPairs <- names(readPairCounts[readPairCounts == 1])
-multihit.readPairs <- names(readPairCounts[readPairCounts > 1])
+read_pair_counts <- table(read_loci_mat$readPairKey)
+uniq_read_pairs <- names(read_pair_counts[read_pair_counts == 1])
+multihit_read_pairs <- names(read_pair_counts[read_pair_counts > 1])
 
 #' ########## IDENTIFY IMPROPERLY-PAIRED READS (chimeras) ##########
 #' Further, all unique and multihit templates were mapped successfully to 
@@ -305,59 +410,84 @@ multihit.readPairs <- names(readPairCounts[readPairCounts > 1])
 #' genomic loci. The latter are termed chimeras and are considered to be 
 #' artifacts of PCR amplification.
 if(!is.null(args$chimeras)){
-  failedReads <- keys[!keys$readPairKey %in% read.loci.mat$readPairKey,]
-  chimera.reads <- failedReads[
-    failedReads$anchorSeqID %in% anch_hits$qName & 
-      failedReads$adriftSeqID %in% adri_hits$qName,]
+  failed_reads <- keys[!keys$readPairKey %in% read_loci_mat$readPairKey,]
+  chimera_reads <- failed_reads[
+    failed_reads$anchorKey %in% anchor_hits$anchorKey & 
+      failed_reads$adriftKey %in% adrift_hits$adriftKey,]
   
-  chimera.alignments <- GRangesList(lapply(1:length(chimera.reads), function(i){
-    anchor <- anch_hits[anch_hits$qName == chimera.reads[i, "anchorSeqID"]]
-    adrift <- adri_hits[adri_hits$qName == chimera.reads[i, "adriftSeqID"]]
-    names(anchor) <- rep(chimera.reads[i, "names"], length(anchor))
-    names(adrift) <- rep(chimera.reads[i, "names"], length(adrift))
+  chimera_alignments <- GRangesList(lapply(1:nrow(chimera_reads), function(i){
+    anchor <- anchor_hits[anchor_hits$anchorKey == chimera_reads[i, "anchorKey"]]
+    adrift <- adrift_hits[adrift_hits$adriftKey == chimera_reads[i, "adriftKey"]]
+    names(anchor) <- rep(chimera_reads[i, "readNames"], length(anchor))
+    names(adrift) <- rep(chimera_reads[i, "readNames"], length(adrift))
+    keepCols <- c("from", "qName", "matches", "repMatches", "misMatches", 
+                  "qStart", "qEnd", "qSize", "tBaseInsert")
+    mcols(anchor) <- mcols(anchor)[,keepCols]
+    mcols(adrift) <- mcols(adrift)[,keepCols]
     c(anchor, adrift)
   }))
   
   chimeraData <- list(
-    "read_info" = chimera.reads, "alignments" = chimera.alignments)
+    "read_info" = chimera_reads, "alignments" = chimera_alignments)
   writeOutputFile(chimeraData, file = args$chimeras)
 }
 
 #' ########## IDENTIFY UNIQUELY-PAIRED READS ##########
-#' Below, the paired.loci object is expanded to create the genomic alignments
+#' Below, the paired_loci object is expanded to create the genomic alignments
 #' for each read that mapped to a single genomic loci. This data is then 
 #' recorded in two formats. "allSites" is a GRanges object where each row is a
 #' single read, while "sites.final" is a condensed form of the data where each
 #' row is a unique integration site with the width of the range refering to 
 #' the longest template aligned to the reference genome. 
-uniq.read.loci.mat <- read.loci.mat[
-  read.loci.mat$readPairKey %in% uniq.readPairs,]
+uniq_read_loci_mat <- read_loci_mat[
+  read_loci_mat$readPairKey %in% uniq_read_pairs,]
 
-uniq.templates <- paired.loci[
-  match(uniq.read.loci.mat$lociPairKey, paired.loci$lociPairKey)]
-uniq.templates$readPairKeys <- NULL
-uniq.templates$readPairKey <- uniq.read.loci.mat$readPairKey
+uniq_templates <- paired_loci[
+  match(uniq_read_loci_mat$lociPairKey, paired_loci$lociPairKey)]
+uniq_templates$readPairKeys <- NULL
+uniq_templates$readPairKey <- uniq_read_loci_mat$readPairKey
   
-uniq.keys <- keys[keys$readPairKey %in% uniq.readPairs,]
-uniq.reads <- uniq.templates[
-  match(uniq.keys$readPairKey, uniq.templates$readPairKey)]
-names(uniq.reads) <- as.character(uniq.keys$readNames)
-uniq.reads$sampleName <- unlist(strsplit(args$anchorPSL, "\\."))[1]
-uniq.reads$ID <- names(uniq.reads)
+uniq_keys <- keys[keys$readPairKey %in% uniq_read_pairs,]
+uniq_reads <- uniq_templates[
+  match(uniq_keys$readPairKey, uniq_templates$readPairKey)]
+names(uniq_reads) <- as.character(uniq_keys$readNames)
+uniq_reads$sampleName <- str_extract(
+  as.character(keys$anchorSeqID[
+    match(uniq_reads$readPairKey, keys$readPairKey)]),
+  "^[\\w-]+")
+uniq_reads$ID <- names(uniq_reads)
   
-uniq_sites <- uniq.reads
+uniq_sites <- uniq_reads
 names(uniq_sites) <- NULL
 writeOutputFile(uniq_sites, file = args$uniqOutput)
 
+# Print out head of uniq_sites for reference.
+panderHead(
+  uniq_sites,
+  title = "Head of uniquely mapped genomic loci.",
+  caption = sprintf(
+    "Alignments yeilded %1$s unique anchor sites from %2$s properly-paired and aligned reads.",
+    length(reduce(flank(uniq_sites, -1, start = TRUE), min.gapwidth = 0L)),
+    length(uniq_sites)))
+
+# Generate condensed sites
 if(!is.null(args$condSites)){
   cond_sites <- condenseSites(
     uniq_sites, keep.cols = "sampleName", list.bp.counts = TRUE)
   writeOutputFile(cond_sites, file = args$condSites)
+  panderHead(
+    cond_sites,
+    title = "Head of unique anchor sites.",
+    caption = sprintf(
+      "There were %1$s unique anchor sites identified with a total of %2$s unique template lengths and %3$s read counts.",
+      length(cond_sites),
+      sum(cond_sites$fragLengths),
+      sum(cond_sites$counts)))
 }
   
 #' Clean up environment for expansion and clustering of multihits
-rm(uniq.read.loci.mat, uniq.templates, uniq.keys, 
-   uniq.reads, uniq_sites, cond_sites)
+rm(uniq_read_loci_mat, uniq_templates, uniq_keys, 
+   uniq_reads, uniq_sites, cond_sites)
 gc()
   
 #' ########## IDENTIFY MULTIPLY-PAIRED READS (multihits) ##########
@@ -365,106 +495,113 @@ gc()
 #' genome. There are bound to always be a certain proportion of reads aligning
 #' to repeated sequence due to the high level degree of repeated DNA elements
 #' within genomes. The final object generated, "multihitData", is a list of 
-#' three objects. "unclusteredMultihits" is a GRanges object where every 
+#' three objects. "unclustered_multihits" is a GRanges object where every 
 #' alignment for every multihit read is present in rows. 
-#' "clusteredMultihitPositions" returns all the possible integration site 
-#' positions for the multihit. Lastly, "clusteredMultihitLengths" contains the
+#' "clustered_multihit_positions" returns all the possible integration site 
+#' positions for the multihit. Lastly, "clustered_multihit_lengths" contains the
 #' length of the templates mapping to the multihit clusters, used for
 #' abundance calculations.
-if(!is.null(args$multihits)){
-  unclusteredMultihits <- GRanges()
-  clusteredMultihitPositions <- GRangesList()
-  clusteredMultihitLengths <- list()
+if(!is.null(args$multihits) & length(multihit_read_pairs) > 0){
+  unclustered_multihits <- GRanges()
+  clustered_multihit_positions <- GRangesList()
+  clustered_multihit_lengths <- list()
   
-  if(length(multihit.readPairs) > 0){
+  if(length(multihit_read_pairs) > 0){
     #' Only consider readPairKeys that aligned to multiple genomic loci
-    multi.read.loci.mat <- read.loci.mat[
-      read.loci.mat$readPairKey %in% multihit.readPairs,]
+    multi_read_loci_mat <- read_loci_mat[
+      read_loci_mat$readPairKey %in% multihit_read_pairs,]
   
-    multihit.templates <- paired.loci[
-      paired.loci$lociPairKey %in% multi.read.loci.mat$lociPairKey]
-    multihit.expansion.map <- multihit.templates$readPairKeys
-    multihit.templates$readPairKeys <- NULL
-    multihit.templates <- multihit.templates[Rle(
-      values = 1:length(multihit.templates),
-      lengths = sapply(multihit.expansion.map, length)
+    multihit_templates <- paired_loci[
+      paired_loci$lociPairKey %in% multi_read_loci_mat$lociPairKey]
+    multihit_expansion_map <- multihit_templates$readPairKeys
+    multihit_templates$readPairKeys <- NULL
+    multihit_templates <- multihit_templates[Rle(
+      values = 1:length(multihit_templates),
+      lengths = sapply(multihit_expansion_map, length)
     )]
-    multihit.templates$readPairKey <- unlist(multihit.expansion.map)
+    multihit_templates$readPairKey <- unlist(multihit_expansion_map)
     
-    #' As the loci are expanded from the paired.loci object, unique templates 
+    #' As the loci are expanded from the paired_loci object, unique templates 
     #' and readPairKeys are present in the readPairKeys unlisted from the 
-    #' paired.loci object.
-    multihit.templates <- multihit.templates[
-      multihit.templates$readPairKey %in% multi.read.loci.mat$readPairKey]
+    #' paired_loci object.
+    multihit_templates <- multihit_templates[
+      multihit_templates$readPairKey %in% multi_read_loci_mat$readPairKey]
     
-    multihit.keys <- keys[keys$readPairKey %in% multihit.readPairs,]
-    multihit.keys$sampleName <- sapply(strsplit(
-      as.character(multihit.keys$names), "%"), "[[", 1)
-    multihit.keys$ID <- sapply(strsplit(
-      as.character(multihit.keys$names), "%"), "[[", 2)
+    multihit_keys <- keys[keys$readPairKey %in% multihit_read_pairs,]
+    multihit_keys$sampleName <- str_extract(
+      as.character(multihit_keys$anchorSeqID), "^[\\w-]+")
+    multihit_keys$ID <- multihit_keys$readNames
 
     #' Medians are based on all the potential sites for a given read, which will
     #' be identical for all reads associated with a readPairKey.
-    multihit.medians <- round(
-      median(width(split(multihit.templates, multihit.templates$readPairKey))))
-    multihit.keys$medians <- multihit.medians[multihit.keys$readPairKey]
+    multihit_medians <- round(
+      median(width(split(multihit_templates, multihit_templates$readPairKey))))
+    multihit_keys$medians <- multihit_medians[multihit_keys$readPairKey]
     
-    multihits.pos <- flank(multihit.templates, -1, start = TRUE)
-    multihits.red <- reduce(multihits.pos, min.gapwidth = 5L, with.revmap = TRUE)  #! Should make 5L a option
-    revmap <- multihits.red$revmap
+    multihits_pos <- flank(multihit_templates, -1, start = TRUE)
+    multihits_red <- reduce(
+      multihits_pos, min.gapwidth = 5L, with.revmap = TRUE)  #! Should make min.gapwidth a option
+    revmap <- multihits_red$revmap
     
     axil_nodes <- as.character(Rle(
-      values = multihit.templates$readPairKey[sapply(revmap, "[", 1)], 
+      values = multihit_templates$readPairKey[sapply(revmap, "[", 1)], 
       lengths = sapply(revmap, length)
     ))
-    nodes <- multihit.templates$readPairKey[unlist(revmap)]
+    nodes <- multihit_templates$readPairKey[unlist(revmap)]
     edgelist <- unique(matrix( c(axil_nodes, nodes), ncol = 2 ))
-    multihits.clusterData <- igraph::clusters(
-      igraph::graph.edgelist(edgelist, directed=F))
-    clus.key <- data.frame(
+    multihits_cluster_data <- igraph::clusters(
+      igraph::graph.edgelist(edgelist, directed = F))
+    clus_key <- data.frame(
       row.names = unique(as.character(t(edgelist))),
-      "clusID" = multihits.clusterData$membership)
+      "clusID" = multihits_cluster_data$membership)
     
-    multihits.pos$clusID <- clus.key[multihits.pos$readPairKey, "clusID"]
-    clusteredMultihitPositions <- split(multihits.pos, multihits.pos$clusID)
+    multihits_pos$clusID <- clus_key[multihits_pos$readPairKey, "clusID"]
+    clustered_multihit_positions <- split(multihits_pos, multihits_pos$clusID)
     clusteredMultihitNames <- lapply(
-      clusteredMultihitPositions, function(x) unique(x$readPairKey))
-    clusteredMultihitPositions <- GRangesList(lapply(
-      clusteredMultihitPositions, 
+      clustered_multihit_positions, function(x) unique(x$readPairKey))
+    clustered_multihit_positions <- GRangesList(lapply(
+      clustered_multihit_positions, 
       function(x){
         unname(unique(granges(x)))
     })) 
     
-    clusteredMultihitLengths <- lapply(clusteredMultihitNames, function(x){
-      readIDs <- unique(multihit.keys[multihit.keys$readPairKey %in% x,]$ID)
-      data.frame(table(multihit.keys[multihit.keys$ID %in% readIDs,]$medians))
+    clustered_multihit_lengths <- lapply(clusteredMultihitNames, function(x){
+      readIDs <- unique(multihit_keys[multihit_keys$readPairKey %in% x,]$ID)
+      data.frame(table(multihit_keys[multihit_keys$ID %in% readIDs,]$medians))
     })
     
-    #' Expand the multihit.templates object from readPairKey specific to read
+    #' Expand the multihit_templates object from readPairKey specific to read
     #' specific.
-    multihit.keys <- multihit.keys[order(multihit.keys$readPairKey),]
-    multihit.readPair.read.exp <- IntegerList(lapply(
-      unique(multihit.keys$readPairKey), 
-      function(x){which(multihit.keys$readPairKey == x)}))
-    names(multihit.readPair.read.exp) <- unique(multihit.keys$readPairKey)
-    unclusteredMultihits <- multihit.templates
-    multihit.readPair.read.exp <- as(multihit.readPair.read.exp[
-      as.character(unclusteredMultihits$readPairKey)], "SimpleList")
-    unclusteredMultihits <- unclusteredMultihits[Rle(
-      values = 1:length(unclusteredMultihits),
-      lengths = sapply(multihit.readPair.read.exp, length)
+    multihit_keys <- multihit_keys[order(multihit_keys$readPairKey),]
+    multihit_readPair_read_exp <- IntegerList(lapply(
+      unique(multihit_keys$readPairKey), 
+      function(x){which(multihit_keys$readPairKey == x)}))
+    names(multihit_readPair_read_exp) <- unique(multihit_keys$readPairKey)
+    unclustered_multihits <- multihit_templates
+    multihit_readPair_read_exp <- as(multihit_readPair_read_exp[
+      as.character(unclustered_multihits$readPairKey)], "SimpleList")
+    unclustered_multihits <- unclustered_multihits[Rle(
+      values = 1:length(unclustered_multihits),
+      lengths = sapply(multihit_readPair_read_exp, length)
     )]
-    names(unclusteredMultihits) <- multihit.keys$names[
-      unlist(multihit.readPair.read.exp)]
-    unclusteredMultihits$ID <- multihit.keys$ID[
-      unlist(multihit.readPair.read.exp)]
-    unclusteredMultihits$sampleName <- multihit.keys$sampleName[
-      unlist(multihit.readPair.read.exp)]
+    names(unclustered_multihits) <- multihit_keys$ID[
+      unlist(multihit_readPair_read_exp)]
+    unclustered_multihits$ID <- multihit_keys$ID[
+      unlist(multihit_readPair_read_exp)]
+    unclustered_multihits$sampleName <- multihit_keys$sampleName[
+      unlist(multihit_readPair_read_exp)]
   }
   
-  stopifnot(length(clusteredMultihitPositions)==length(clusteredMultihitLengths))
-  multihitData <- list(unclusteredMultihits, clusteredMultihitPositions, clusteredMultihitLengths)
-  names(multihitData) <- c("unclusteredMultihits", "clusteredMultihitPositions", "clusteredMultihitLengths")
+  stopifnot(
+    length(clustered_multihit_positions) == length(clustered_multihit_lengths))
+  multihitData <- list(
+    unclustered_multihits, 
+    clustered_multihit_positions, 
+    clustered_multihit_lengths)
+  names(multihitData) <- c(
+    "unclustered_multihits", 
+    "clustered_multihit_positions", 
+    "clustered_multihit_lengths")
   
   writeOutputFile(multihitData, file = args$multihits)
 }
