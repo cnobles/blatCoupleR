@@ -59,11 +59,6 @@ parser$add_argument(
 
 args <- parser$parse_args(commandArgs(trailingOnly = TRUE))
 
-setwd("~/data/projects/guideseq_analysis/170522_clinical_specimen_run")
-code_dir <- "~/dev/scripts/blatCoupleR"
-debug <- c("aligned/R2C6-pos-1.r2.psl.gz", "aligned/R2C6-pos-1.r1.psl.gz", "-k", "consolidated/R2C6-pos-1.key.r2.csv", "consolidated/R2C6-pos-1.key.r1.csv", "-o", "test.csv")
-args <- parser$parse_args(debug)
-
 # Argument Conditionals
 
 # Print Inputs to terminal
