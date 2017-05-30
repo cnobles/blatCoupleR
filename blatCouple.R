@@ -409,7 +409,7 @@ if(!is.null(args$chimeras)){
   chimera_reads <- failed_reads[
     failed_reads$anchorKey %in% anchor_hits$anchorKey & 
       failed_reads$adriftKey %in% adrift_hits$adriftKey,]
-  
+  if(length(chimera_reads) > 0){
   chimera_alignments <- GRangesList(lapply(1:nrow(chimera_reads), function(i){
     anchor <- anchor_hits[anchor_hits$anchorKey == chimera_reads[i, "anchorKey"]]
     adrift <- adrift_hits[adrift_hits$adriftKey == chimera_reads[i, "adriftKey"]]
@@ -425,6 +425,7 @@ if(!is.null(args$chimeras)){
   chimeraData <- list(
     "read_info" = chimera_reads, "alignments" = chimera_alignments)
   writeOutputFile(chimeraData, file = args$chimeras)
+  }
 }
 
 #' ########## IDENTIFY UNIQUELY-PAIRED READS ##########
