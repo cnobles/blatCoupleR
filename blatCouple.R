@@ -409,22 +409,24 @@ if(!is.null(args$chimeras)){
   chimera_reads <- failed_reads[
     failed_reads$anchorKey %in% anchor_hits$anchorKey & 
       failed_reads$adriftKey %in% adrift_hits$adriftKey,]
-  if(length(chimera_reads) > 0){
-  chimera_alignments <- GRangesList(lapply(1:nrow(chimera_reads), function(i){
-    anchor <- anchor_hits[anchor_hits$anchorKey == chimera_reads[i, "anchorKey"]]
-    adrift <- adrift_hits[adrift_hits$adriftKey == chimera_reads[i, "adriftKey"]]
-    names(anchor) <- rep(chimera_reads[i, "readNames"], length(anchor))
-    names(adrift) <- rep(chimera_reads[i, "readNames"], length(adrift))
-    keepCols <- c("from", "qName", "matches", "repMatches", "misMatches", 
-                  "qStart", "qEnd", "qSize", "tBaseInsert")
-    mcols(anchor) <- mcols(anchor)[,keepCols]
-    mcols(adrift) <- mcols(adrift)[,keepCols]
-    c(anchor, adrift)
-  }))
+  if(nrow(chimera_reads) > 0){
+    chimera_alignments <- GRangesList(lapply(1:nrow(chimera_reads), function(i){
+      anchor <- anchor_hits[
+        anchor_hits$anchorKey == chimera_reads[i, "anchorKey"]]
+      adrift <- adrift_hits[
+        adrift_hits$adriftKey == chimera_reads[i, "adriftKey"]]
+      names(anchor) <- rep(chimera_reads[i, "readNames"], length(anchor))
+      names(adrift) <- rep(chimera_reads[i, "readNames"], length(adrift))
+      keepCols <- c("from", "qName", "matches", "repMatches", "misMatches", 
+                    "qStart", "qEnd", "qSize", "tBaseInsert")
+      mcols(anchor) <- mcols(anchor)[,keepCols]
+      mcols(adrift) <- mcols(adrift)[,keepCols]
+      c(anchor, adrift)
+    }))
   
-  chimeraData <- list(
-    "read_info" = chimera_reads, "alignments" = chimera_alignments)
-  writeOutputFile(chimeraData, file = args$chimeras)
+    chimeraData <- list(
+      "read_info" = chimera_reads, "alignments" = chimera_alignments)
+    writeOutputFile(chimeraData, file = args$chimeras)
   }
 }
 
@@ -482,9 +484,9 @@ if(!is.null(args$condSites)){
 }
   
 #' Clean up environment for expansion and clustering of multihits
-rm(uniq_read_loci_mat, uniq_templates, uniq_keys, 
-   uniq_reads, uniq_sites)
-gc()
+#rm(uniq_read_loci_mat, uniq_templates, uniq_keys, 
+#   uniq_reads, uniq_sites)
+#gc()
   
 #' ########## IDENTIFY MULTIPLY-PAIRED READS (multihits) ##########
 #' Multihits are reads that align to multiple locations in the reference 
