@@ -205,13 +205,13 @@ adrift_hits <- readPSL(args$adriftPSL)
 # Print out basic alignment info.
 pander(sprintf(
   "Anchor Alignments: %1$s from %2$s reads", 
-  nrow(anchor_hits),
-  length(unique(anchor_hits$qName))))
+  length(unique(anchor_hits$qName)),
+  nrow(anchor_hits)))
 
 pander(sprintf(
-  "Adrift Alignments: %1$s from %2$s reads", 
-  nrow(adrift_hits),
-  length(unique(adrift_hits$qName))))
+  "\nAdrift Alignments: %1$s from %2$s reads", 
+  length(unique(adrift_hits$qName)),
+  nrow(adrift_hits)))
 
 # Stop if there are no alignments to couple.
 if(nrow(anchor_hits) == 0 | nrow(adrift_hits) == 0){
