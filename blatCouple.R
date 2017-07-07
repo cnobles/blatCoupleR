@@ -80,7 +80,7 @@ pandoc.table(data.frame(input_table, row.names = NULL),
 
 # Load additional R-packages for analysis and processing
 add_packs <- c("stringr", "GenomicRanges", "igraph", 
-               "data.table", "Matrix", "BSgenome")
+               "data.table", "Matrix", "BSgenome", "Biostrings")
 add_packs_loaded <- suppressMessages(
   sapply(add_packs, require, character.only = TRUE))
 if(!all(add_packs_loaded)){
@@ -112,18 +112,24 @@ if(!all(c("panderHead", "readKeyFile", "readPSL", "qualityFilter",
 }
 
 # Load reference genome
-genome <- grep(args$refGenome, BSgenome::installed.genomes(), value = TRUE)
-if(length(genome) == 0){
-  pandoc.strong("Installed genomes include")
-  pandoc.list(BSgenome::installed.genomes())
-  stop("Selected reference genome not in list.")
-}else if(length(genome) > 1){
-  pandoc.strong("Installed genomes include")
-  pandoc.list(BSgenome::installed.genomes())
-  stop("Please be more specific about reference genome. Multiple matches to input.")
+if(grepl(".fa", args$refGenome)){
+  if(!file.exists(args$refGenome)) stop("Specified reference genome file not found.")
+  refFileType <- ifelse(grepl(".fastq", args$refGenome), "fastq", "fasta")
+  refGenome <- readDNAStringSet(args$refGenome, format = refFileType)
+}else{
+  genome <- grep(args$refGenome, BSgenome::installed.genomes(), value = TRUE)
+  if(length(genome) == 0){
+    pandoc.strong("Installed genomes include")
+    pandoc.list(BSgenome::installed.genomes())
+    stop("Selected reference genome not in list.")
+  }else if(length(genome) > 1){
+    pandoc.strong("Installed genomes include")
+    pandoc.list(BSgenome::installed.genomes())
+    stop("Please be more specific about reference genome. Multiple matches to input.")
+  }
+  suppressMessages(library(genome, character.only = TRUE))
+  refGenome <- get(genome)
 }
-suppressMessages(library(genome, character.only = TRUE))
-refGenome <- get(genome)
 
 ## Load and process alignment data ##
 # Create single key file if one for each alignment file.
