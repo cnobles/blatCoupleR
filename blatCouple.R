@@ -239,12 +239,16 @@ adrift_hits <- adrift_hits[adrift_hits$qName %in% levels(keys$adriftSeqID),]
 
 # Quality filter and convert alignments from data.frame to GRanges
 anchor_hits <- qualityFilter(
-  anchor_hits, args$maxAlignStart, args$minPercentIdentity)                     #! Filtering data may lead to 0 returned, need to catch that error.
+  anchor_hits, args$maxAlignStart, args$minPercentIdentity)                     
+if(nrow(anchor_hits) == 0){
+  stop("No alignments remaining after quality filtering anchor reads.")}
 anchor_hits <- processBLATData(anchor_hits, "anchor", refGenome = refGenome)
 anchor_hits$anchorKey <- match(anchor_hits$qName, levels(keys$anchorSeqID))
 
 adrift_hits <- qualityFilter(
   adrift_hits, args$maxAlignStart, args$minPercentIdentity)
+if(nrow(adrift_hits) == 0){
+  stop("No alignments remaining after quality filtering adrift reads.")}
 adrift_hits <- processBLATData(adrift_hits, "adrift", refGenome = refGenome)
 adrift_hits$adriftKey <- match(adrift_hits$qName, levels(keys$adriftSeqID))
 
