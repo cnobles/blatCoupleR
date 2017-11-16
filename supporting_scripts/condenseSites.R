@@ -41,16 +41,22 @@ condenseSites <- function(sites, keep.cols = NULL, list.bps = FALSE,
       min.gapwidth = 0L, 
       with.revmap = TRUE)
   
-    revmap <- as.list(gr.red$revmap)
+    revmap <- gr.red$revmap
     gr.red$revmap <- NULL
-    bp.rle <- lapply(revmap, function(x) S4Vectors::Rle(sort(width(gr[x]))))
+    bp.df <- data.frame(
+      redid = Rle(
+        values = 1:length(revmap), lengths = width(revmap@partitioning)),
+      oriid = unlist(revmap),
+      width = width(gr[unlist(revmap)]))
+    bp.df <- bp.df[order(bp.df$width),]
+    bp.rle <- split(Rle(bp.df$width), bp.df$redid)
     
     if(!is.null(cols)) mcols(gr.red) <- unique(cols)      
-    gr.red$counts <- sapply(revmap, length)
-    gr.red$fragLengths <- sapply(bp.rle, nrun)
+    gr.red$counts <- width(revmap@partitioning)
+    gr.red$fragLengths <- width(runValue(bp.rle)@partitioning)
     if(bps){
-      gr.red$bp.widths <- IntegerList(lapply(bp.rle, runValue))
-      if(bp.counts) gr.red$bp.counts <- IntegerList(lapply(bp.rle, runLength))
+      gr.red$bp.widths <- runValue(bp.rle)
+      if(bp.counts) gr.red$bp.counts <- runLength(bp.rle)
     }
     return(gr.red)
   },

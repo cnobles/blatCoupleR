@@ -482,19 +482,27 @@ if(!is.null(args$chimeras)){
     failed_reads$anchorKey %in% anchor_hits$anchorKey & 
       failed_reads$adriftKey %in% adrift_hits$adriftKey,]
   if(nrow(chimera_reads) > 0){
-    chimera_alignments <- GRangesList(lapply(1:nrow(chimera_reads), function(i){
-      anchor <- anchor_hits[
-        anchor_hits$anchorKey == chimera_reads[i, "anchorKey"]]
-      adrift <- adrift_hits[
-        adrift_hits$adriftKey == chimera_reads[i, "adriftKey"]]
-      names(anchor) <- rep(chimera_reads[i, "readNames"], length(anchor))
-      names(adrift) <- rep(chimera_reads[i, "readNames"], length(adrift))
-      keepCols <- c("from", "qName", "matches", "repMatches", "misMatches", 
-                    "qStart", "qEnd", "qSize", "tBaseInsert")
-      mcols(anchor) <- mcols(anchor)[,keepCols]
-      mcols(adrift) <- mcols(adrift)[,keepCols]
-      c(anchor, adrift)
-    }))
+    chim_anchor <- anchor_hits[
+      anchor_hits$anchorKey %in% chimera_reads$anchorKey,]
+    chim_anchor <- split(chim_anchor, chim_anchor$qName)
+    chim_anchor <- chim_anchor[chimera_reads$anchorSeqID]
+    names(chim_anchor) <- chimera_reads$readNames
+    chim_anchor <- unlist(chim_anchor)
+    
+    chim_adrift <- adrift_hits[
+      adrift_hits$adriftKey %in% chimera_reads$adriftKey,]
+    chim_adrift <- split(chim_adrift, chim_adrift$qName)
+    chim_adrift <- chim_adrift[chimera_reads$adriftSeqID]
+    names(chim_adrift) <- chimera_reads$readNames
+    chim_adrift <- unlist(chim_adrift)
+    
+    keepCols <- c("from", "qName", "matches", "repMatches", "misMatches", 
+                  "qStart", "qEnd", "qSize", "tBaseInsert")
+    mcols(chim_anchor) <- mcols(chim_anchor)[,keepCols]
+    mcols(chim_adrift) <- mcols(chim_adrift)[,keepCols]
+    
+    chimera_alignments <- c(chim_anchor, chim_adrift)
+    chimera_alignments <- split(chimera_alignments, names(chimera_alignments))
     
     chimeraData <- list(
       "read_info" = chimera_reads, "alignments" = chimera_alignments)
@@ -614,8 +622,8 @@ if(!is.null(args$multihits) & length(multihit_read_pairs) > 0){
     revmap <- multihits_red$revmap
     
     axil_nodes <- as.character(Rle(
-      values = multihit_templates$readPairKey[sapply(revmap, "[", 1)], 
-      lengths = sapply(revmap, length)
+      values = multihit_templates$readPairKey[start(revmap@partitioning)], 
+      lengths = width(revmap@partitioning)
     ))
     nodes <- multihit_templates$readPairKey[unlist(revmap)]
     edgelist <- unique(matrix( c(axil_nodes, nodes), ncol = 2 ))
@@ -626,34 +634,42 @@ if(!is.null(args$multihits) & length(multihit_read_pairs) > 0){
       "clusID" = multihits_cluster_data$membership)
     
     multihits_pos$clusID <- clus_key[multihits_pos$readPairKey, "clusID"]
-    clustered_multihit_positions <- split(multihits_pos, multihits_pos$clusID)
-    clusteredMultihitNames <- lapply(
-      clustered_multihit_positions, function(x) unique(x$readPairKey))
-    clustered_multihit_positions <- GRangesList(lapply(
-      clustered_multihit_positions, 
-      function(x){
-        unname(unique(granges(x)))
-      })) 
+    multihits_pos <- multihits_pos[order(multihits_pos$clusID)]
+    clustered_multihit_index <- as.data.frame(mcols(multihits_pos))
+    multihit_loci_rle <- Rle(factor(clustered_multihit_index$lociPairKey, 
+             levels = unique(clustered_multihit_index$lociPairKey)))
+    multihit_loci_intL <- split(
+      multihit_loci_rle, clustered_multihit_index$clusID)
     
-    clustered_multihit_lengths <- lapply(clusteredMultihitNames, function(x){
-      readIDs <- unique(multihit_keys[multihit_keys$readPairKey %in% x,]$ID)
-      data.frame(table(multihit_keys[multihit_keys$ID %in% readIDs,]$medians))
-    })
+    clustered_multihit_positions <- granges(multihits_pos[
+      match(unlist(runValue(multihit_loci_intL)), 
+            clustered_multihit_index$lociPairKey)])
+    clustered_multihit_positions <- split(
+      clustered_multihit_positions,
+      Rle(values = 1:length(multihit_loci_intL), 
+          lengths = width(runValue(multihit_loci_intL)@partitioning)))
+    
+    readPairKey_cluster_index <- unique(
+      clustered_multihit_index[,c("readPairKey", "clusID")])
+    multihit_keys$clusID <- readPairKey_cluster_index$clusID[
+      match(multihit_keys$readPairKey, readPairKey_cluster_index$readPairKey)]
+    multihit_keys <- multihit_keys[order(multihit_keys$medians),]
+    clustered_multihit_lengths <- split(
+      Rle(multihit_keys$medians), multihit_keys$clusID)
     
     #' Expand the multihit_templates object from readPairKey specific to read
     #' specific.
     multihit_keys <- multihit_keys[order(multihit_keys$readPairKey),]
-    multihit_readPair_read_exp <- IntegerList(lapply(
-      unique(multihit_keys$readPairKey), 
-      function(x){which(multihit_keys$readPairKey == x)}))
-    names(multihit_readPair_read_exp) <- unique(multihit_keys$readPairKey)
+    multihit_readPair_read_exp <- IRanges::IntegerList(
+      split(1:nrow(multihit_keys), multihit_keys$readPairKey))
+    
     unclustered_multihits <- multihit_templates
-    multihit_readPair_read_exp <- as(multihit_readPair_read_exp[
-      as.character(unclustered_multihits$readPairKey)], "SimpleList")
+    multihit_readPair_read_exp <- multihit_readPair_read_exp[
+      as.character(unclustered_multihits$readPairKey)]
+    
     unclustered_multihits <- unclustered_multihits[Rle(
       values = 1:length(unclustered_multihits),
-      lengths = sapply(multihit_readPair_read_exp, length)
-    )]
+      lengths = width(multihit_readPair_read_exp@partitioning))]
     names(unclustered_multihits) <- multihit_keys$ID[
       unlist(multihit_readPair_read_exp)]
     unclustered_multihits$ID <- multihit_keys$ID[
