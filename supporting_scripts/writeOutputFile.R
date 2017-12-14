@@ -8,8 +8,12 @@
 #' csv, tsv, rds, and RData.
 #' @author Christopher Nobles, Ph.D.
 
-writeOutputFile <- function(object, file){
-  fileType <- stringr::str_extract(file, "[\\w]+$")
+writeOutputFile <- function(object, file, format = "any"){
+  if(format = "any"){
+    fileType <- stringr::str_extract(file, "[\\w]+$")
+  }else{
+    fileType <- format
+  }
   objectClass <- class(object)
   if(fileType == "csv" & objectClass != "list"){
     write.csv(

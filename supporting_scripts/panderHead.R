@@ -16,5 +16,10 @@ panderHead <- function(object, title = NULL, caption = NULL, row.names = FALSE){
   }else{
     df <- as.data.frame(head(object))
   }
+  
+  acceptable_classes <- c("factor", "character", "numeric", "integer")
+  df <- df[,which(
+    sapply(1:ncol(df), function(i) class(df[,i])) %in% acceptable_classes)]
+  
   pandoc.table(df, style = "simple", split.tables = Inf, caption = caption)
 }
