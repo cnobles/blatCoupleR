@@ -734,7 +734,7 @@ if(!is.null(args$multihits)){
   }
 }
 
-if(is.null(args$saveImage)){
+if(!is.null(args$saveImage)){
   save.image(args$saveImage)}
 
 q()
