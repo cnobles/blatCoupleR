@@ -9,7 +9,7 @@
 #' @author Christopher Nobles, Ph.D.
 
 writeOutputFile <- function(object, file, format = "any"){
-  if(format = "any"){
+  if(format == "any"){
     fileType <- stringr::str_extract(file, "[\\w]+$")
   }else{
     fileType <- format
