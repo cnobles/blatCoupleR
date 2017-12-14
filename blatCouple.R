@@ -510,6 +510,8 @@ if(args$chimeras != "NA"){
   chimera_reads <- failed_reads[
     failed_reads$anchorKey %in% anchor_hits$anchorKey & 
       failed_reads$adriftKey %in% adrift_hits$adriftKey,]
+  chimera_alignments <- GRangesList()
+  
   if(nrow(chimera_reads) > 0){
     chim_anchor <- anchor_hits[
       anchor_hits$anchorKey %in% chimera_reads$anchorKey,]
@@ -532,11 +534,11 @@ if(args$chimeras != "NA"){
     
     chimera_alignments <- c(chim_anchor, chim_adrift)
     chimera_alignments <- split(chimera_alignments, names(chimera_alignments))
-    
-    chimeraData <- list(
-      "read_info" = chimera_reads, "alignments" = chimera_alignments)
-    writeOutputFile(chimeraData, file = args$chimeras)
   }
+  
+  chimeraData <- list(
+    "read_info" = chimera_reads, "alignments" = chimera_alignments)
+  writeOutputFile(chimeraData, file = args$chimeras)
 }
 
 #' Expand out reads uniquely mapped reads or unique sites
