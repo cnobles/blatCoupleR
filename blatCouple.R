@@ -129,14 +129,14 @@ if(grepl(".fa", args$refGenome)){
   refFileType <- ifelse(grepl(".fastq", args$refGenome), "fastq", "fasta")
   refGenome <- readDNAStringSet(args$refGenome, format = refFileType)
 }else{
-  genome <- grep(args$refGenome, BSgenome::installed.genomes(), value = TRUE)
+  genome <- grep(args$refGenome, unique(BSgenome::installed.genomes()), value = TRUE)
   if(length(genome) == 0){
     pandoc.strong("Installed genomes include")
-    pandoc.list(BSgenome::installed.genomes())
+    pandoc.list(unique(BSgenome::installed.genomes()))
     stop("Selected reference genome not in list.")
   }else if(length(genome) > 1){
     pandoc.strong("Installed genomes include")
-    pandoc.list(BSgenome::installed.genomes())
+    pandoc.list(unique(BSgenome::installed.genomes()))
     stop(
       "Please be more specific about reference genome. Multiple matches to input.")
   }
