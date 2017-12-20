@@ -260,7 +260,10 @@ pander(sprintf(
 
 # Stop if there are no alignments to couple.
 if(nrow(anchor_hits) == 0 | nrow(adrift_hits) == 0){
-  stop("No sequences aligned for at least one of the sequence pairs.")}
+  message("No sequences aligned for at least one of the sequence pairs.")
+  write_null_output(args)
+  q()
+}
 
 # Remove alignments that do not appear in the keys (single reads filtered out)
 anchor_hits <- anchor_hits[anchor_hits$qName %in% levels(keys$anchorSeqID),]
