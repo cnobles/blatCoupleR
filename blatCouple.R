@@ -270,14 +270,20 @@ adrift_hits <- adrift_hits[adrift_hits$qName %in% levels(keys$adriftSeqID),]
 anchor_hits <- qualityFilter(
   anchor_hits, args$maxAlignStart, args$minPercentIdentity)                     
 if(nrow(anchor_hits) == 0){
-  stop("No alignments remaining after quality filtering anchor reads.")}
+  message("No alignments remaining after quality filtering anchor reads.")
+  write_null_output(args)
+  q()
+}
 anchor_hits <- processBLATData(anchor_hits, "anchor", refGenome = refGenome)
 anchor_hits$anchorKey <- match(anchor_hits$qName, levels(keys$anchorSeqID))
 
 adrift_hits <- qualityFilter(
   adrift_hits, args$maxAlignStart, args$minPercentIdentity)
 if(nrow(adrift_hits) == 0){
-  stop("No alignments remaining after quality filtering adrift reads.")}
+  message("No alignments remaining after quality filtering adrift reads.")
+  write_null_output(args)
+  q()
+}
 adrift_hits <- processBLATData(adrift_hits, "adrift", refGenome = refGenome)
 adrift_hits$adriftKey <- match(adrift_hits$qName, levels(keys$adriftSeqID))
 
@@ -300,7 +306,9 @@ panderHead(
 
 # Stop if no alignments passed filtering for individual sequences.
 if(length(anchor_hits) == 0 | length(adrift_hits) == 0){
-  stop("No alignments remaining after quality filtering for at least one of the sequence pairs.")
+  message("No alignments remaining after quality filtering for at least one of the sequence pairs.")
+  write_null_output(args)
+  q()
 }
 
 # All alignments should be either "+" or "-" strand.  
@@ -340,7 +348,9 @@ adrift_loci <- red_adrift_hits[subjectHits(pairs)]
 
 #Stop if no alignments coupled based on criteria.
 if(length(pairs) == 0){
-  stop("No alignments coupled based on input criteria.")
+  message("No alignments coupled based on input criteria.")
+  write_null_output(args)
+  q()
 }
 
 # Check isDownstream and isOppositeStrand
@@ -365,7 +375,9 @@ adrift_loci <- adrift_loci[keep_loci]
 
 # Stop if no loci were properly paired
 if(length(anchor_loci) == 0 | length(adrift_loci) == 0){
-  stop("No genomic loci from alignments were properly paired.")
+  message("No genomic loci from alignments were properly paired.")  
+  write_null_output(args)
+  q()
 }
 
 #' Below, the code constructs a genomic loci key which links genomic loci to
@@ -479,7 +491,9 @@ paired_loci$readPairKeys <- paired_loci_key$readPairKeys
 
 #' Stop if there are no paired_loci
 if(length(paired_loci) == 0){
-  stop("No valid paired genomic loci were found within the data given input criteria.")
+  message("No valid paired genomic loci were found within the data given input criteria.")
+  write_null_output(args)
+  q()
 }
 
 #' Expand readPairKeys and lociPairKeys to make a single object that maps loci
