@@ -6,10 +6,20 @@
 #'
 
 readKeyFile <- function(keyFile, format){
+  cols <- c("readNames", "seqID")
+  cols.class <- c("character", "character")
   if(format == "csv"){
-    return(read.csv(keyFile))
+    file <- try(read.csv(keyFile))
+    if(class(file) == "try-error" & grepl("no lines available", file)){
+      file <- read.table(text = "", col.names = cols, colClasses = cols.class)
+    }
+    return(file)
   }else if(format == "tsv"){
-    return(read.delim(keyFile, sep = "\t"))
+    file <- try(read.delim(keyFile, sep = "\t"))
+    if(class(file) == "try-error" & grepl("no lines available", file)){
+      file <- read.table(text = "", col.names = cols, colClasses = cols.class)
+    }
+    return(file)
   }else if(format == "rds"){
     file <- readRDS(keyFile)
     return(as.data.frame(file))
