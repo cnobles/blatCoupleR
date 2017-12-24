@@ -179,6 +179,15 @@ if(length(args$keys) > 1){
   
   # Only interested in reads in common between the two.
   common_names <- intersect(anchor_keys$readNames, adrift_keys$readNames)
+
+  # Check intersection is not 0
+  if(length(common_names == 0){
+    message("No sequences in common between key files.")
+    write_null_output(args)
+    q()
+  }
+  
+  # Filter names in key files.
   anchor_keys <- anchor_keys[anchor_keys$readNames %in% common_names,]
   adrift_keys <- adrift_keys[adrift_keys$readNames %in% common_names,]
   
