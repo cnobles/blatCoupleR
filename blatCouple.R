@@ -164,6 +164,13 @@ if(length(args$keys) > 1){
   stopifnot(all(c("readNames", "seqID") %in% names(anchor_keys)))
   stopifnot(all(c("readNames", "seqID") %in% names(adrift_keys)))
   
+  # Check input for data, if none, write files and exit
+  if(nrow(anchor_keys) == 0 | nrow(adrift_keys) == 0){
+    message("No sequences identified in at least one key file.")
+    write_null_output(args)
+    q()
+  }
+  
   # Verify readNames are in the same format.
   anchor_keys$readNames <- str_extract(
     anchor_keys$readNames, args$readNamePattern)
@@ -203,6 +210,13 @@ if(length(args$keys) > 1){
   }
   keys <- readKeyFile(args$keys, format = key_type)
   stopifnot(all(c("readNames", "anchorSeqID", "adriftSeqID") %in% names(keys)))
+  
+  if(nrow(keys) == 0){
+    message("No sequences identified in key file.")
+    write_null_output(args)
+    q()
+  }
+  
   keys$anchorSeqID <- factor(keys$anchorSeqID)
   keys$adriftSeqID <- factor(keys$adriftSeqID)
   keys$anchorKey <- as.integer(keys$anchorSeqID)
