@@ -64,7 +64,13 @@ writeOutputFile <- function(object, file, format = "any"){
 
 write_null_output <- function(args){
   if(!exists("uniq_sites")){
-    writeOutputFile(object = GRanges(), file = args$uniqOutput)}
+    metaCols <- read.table(
+      text = "", 
+      col.names = c("lociPairKey", "readPairKey", "sampleName", "ID"),
+      colClasses = c("character", "character", "character", "character"))
+    g <- GRanges()
+    mcols(g) <- metaCols
+    writeOutputFile(object = g, file = args$uniqOutput)}
   if(!exists("cond_sites") & !is.null(args$condSites)){
     writeOutputFile(object = GRanges(), file = args$condSites)}
   if(!exists("chimeraData") & !is.null(args$chimeras)){

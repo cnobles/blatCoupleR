@@ -181,7 +181,7 @@ if(length(args$keys) > 1){
   common_names <- intersect(anchor_keys$readNames, adrift_keys$readNames)
 
   # Check intersection is not 0
-  if(is.null(common_names)){
+  if(length(common_names) == 0 | is.null(common_names)){
     message("No sequences in common between key files.")
     write_null_output(args)
     q()
