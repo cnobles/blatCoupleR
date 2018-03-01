@@ -10,13 +10,13 @@ readKeyFile <- function(keyFile, format){
   cols.class <- c("character", "character")
   if(format == "csv"){
     file <- try(read.csv(keyFile))
-    if(class(file) == "try-error" & grepl("no lines available", file)){
+    if(class(file) == "try-error" & grepl("no lines available", file[1])){
       file <- read.table(text = "", col.names = cols, colClasses = cols.class)
     }
     return(file)
   }else if(format == "tsv"){
     file <- try(read.delim(keyFile, sep = "\t"))
-    if(class(file) == "try-error" & grepl("no lines available", file)){
+    if(class(file) == "try-error" & grepl("no lines available", file[1])){
       file <- read.table(text = "", col.names = cols, colClasses = cols.class)
     }
     return(file)
