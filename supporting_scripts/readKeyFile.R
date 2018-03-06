@@ -9,13 +9,13 @@ readKeyFile <- function(keyFile, format){
   cols <- c("readNames", "seqID")
   cols.class <- c("character", "character")
   if(format == "csv"){
-    file <- try(read.csv(keyFile))
-    if(class(file) == "try-error" & grepl("no lines available", file[1])){
+    file <- try(data.table::fread(keyFile, sep = ",", data.table = FALSE))
+    if(class(file) == "try-error" & grepl("File is empty:", file[1])){
       file <- read.table(text = "", col.names = cols, colClasses = cols.class)
     }
     return(file)
   }else if(format == "tsv"){
-    file <- try(read.delim(keyFile, sep = "\t"))
+    file <- try(data.table::fread(keyFile, sep = "\t", data.table = FALSE))
     if(class(file) == "try-error" & grepl("no lines available", file[1])){
       file <- read.table(text = "", col.names = cols, colClasses = cols.class)
     }

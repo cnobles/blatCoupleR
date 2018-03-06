@@ -30,6 +30,8 @@ Join paired-end sequence alignments from BLAST-Like Alignment Tool (blat) output
   
   **[--maxTempLength]** Maximum value for paired template length to consider. Default = 2500 (bps).
   
+  **[--keepAltChr]** By default, blatCoupleR will remove alignments from psl files aligning to alternative chromosome sequences, ex. chr7_*_alt. Using this option will keep these alignments, which may increase multihit outputs.
+  
   **[--readNamePattern]** Regular expression for pattern matching read names. Should not contain R1/R2/I1/I2 specific components. Default is [\w:-]+
   
   **[--saveImage]** Output file name for saved image. Include '.RData' (ie. debug.RData).
@@ -38,6 +40,7 @@ Join paired-end sequence alignments from BLAST-Like Alignment Tool (blat) output
 blatCouplR is coded in R and was developed on v3.4.0, though it should run with earlier versions given the appropriate dependencies. The script uses 9 additional packages:
   * argparse
   * pander
+  * yaml
   * stringr
   * GenomicRanges
   * igraph
