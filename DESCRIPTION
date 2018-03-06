@@ -1,0 +1,24 @@
+Package: blatCoupleR
+Type: Package
+Title: BLAT alignment joining tool for paired-end reads.
+Version: 0.1.0
+Author: Christopher Nobles, Ph.D.
+Maintainer: Christopher Nobles <cnobles@pennmedicine.upenn.edu>
+Description: Tool used for joining, or coupling, paired-end reads after 
+    alignment with the BLAST-like Alignment Tool (BLAT). In part, this tool also
+    uses good practices when classifying the alignments by grouping joined 
+    alignments into either unique alignments, multihit alignments, or chimeric
+    alignments.
+License: GNU General Public License v3
+LazyData: TRUE
+Depends:
+    argparse,
+    pander,
+    yaml,
+    stringr,
+    igraph,
+    data.table,
+    Matrix,
+    GenomicRanges,
+    BSgenome,
+    BSgenome.Hsapiens.UCSC.hg38

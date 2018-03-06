@@ -1,0 +1,9 @@
+# https://docs.travis-ci.com/user/languages/r
+language: r
+r: bioc-release
+bioc_packages: 
+  - GenomicRanges
+  - BSgenome
+  - BSgenome.Hsapiens.UCSC.hg38
+cache: packages
+script: bash tests/test.sh

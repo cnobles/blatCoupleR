@@ -47,4 +47,4 @@ blatCouplR is coded in R and was developed on v3.4.0, though it should run with 
   * data.table
   * Matrix
   * BSgenome
-  * Biostrings
+  * BSgenome.Hsapiens.UCSC.hg38 (for tests)

@@ -85,7 +85,7 @@ pandoc.table(data.frame(input_table, row.names = NULL),
 
 # Load additional R-packages for analysis and processing
 add_packs <- c("stringr", "GenomicRanges", "igraph", 
-               "data.table", "Matrix", "BSgenome", "Biostrings")
+               "data.table", "Matrix", "BSgenome")
 add_packs_loaded <- suppressMessages(
   sapply(add_packs, require, character.only = TRUE))
 if(!all(add_packs_loaded)){
