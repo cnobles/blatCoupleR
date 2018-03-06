@@ -280,7 +280,7 @@ pander(sprintf(
   length(unique(anchor_hits$qName))))
 
 pander(sprintf(
-  "\nAdrift Alignments: %1$s from %2$s reads", 
+  "\nAdrift Alignments: %1$s from %2$s reads\n\n", 
   nrow(adrift_hits),
   length(unique(adrift_hits$qName))))
 

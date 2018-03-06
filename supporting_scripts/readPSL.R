@@ -19,11 +19,13 @@ readPSL <- function(pslFile, toNull = NULL) {
       try(data.table::fread(paste("zcat", f), sep = "\t"), silent = TRUE))
   })
   psl <- lapply(psl, function(p){
-    if(class(p) == "try-error" & grepl("File is empty:", p[1])){
-      p <- read.table(text = "", col.names = cols, colClasses = cols.class)
-      return(as.data.table(p))
-    }else if(class(p) == "try-error"){
-      stop("Error in loading psl files. Check output from alignment (blat).")
+    if(any(class(p) == "try-error")){
+      if(grepl("File is empty:", p[1])){
+        p <- read.table(text = "", col.names = cols, colClasses = cols.class)
+        return(as.data.table(p))
+      }else{
+        stop("Error in loading psl files. Check output from alignment (blat).")
+      }
     }else{
       return(p)
     }

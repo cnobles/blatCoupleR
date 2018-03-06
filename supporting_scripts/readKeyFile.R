@@ -10,14 +10,22 @@ readKeyFile <- function(keyFile, format){
   cols.class <- c("character", "character")
   if(format == "csv"){
     file <- try(data.table::fread(keyFile, sep = ",", data.table = FALSE))
-    if(class(file) == "try-error" & grepl("File is empty:", file[1])){
-      file <- read.table(text = "", col.names = cols, colClasses = cols.class)
+    if(any(class(file) == "try-error")){
+      if(grepl("File is empty:", file[1])){
+        file <- read.table(text = "", col.names = cols, colClasses = cols.class)
+      }else{
+        stop("Error in loading key files. Check input files.")
+      }
     }
     return(file)
   }else if(format == "tsv"){
     file <- try(data.table::fread(keyFile, sep = "\t", data.table = FALSE))
-    if(class(file) == "try-error" & grepl("no lines available", file[1])){
-      file <- read.table(text = "", col.names = cols, colClasses = cols.class)
+    if(any(class(file) == "try-error")){
+      if(grepl("no lines available", file[1])){
+        file <- read.table(text = "", col.names = cols, colClasses = cols.class)
+      }else{
+        stop("Error in loading key files. Check input files.")
+      }
     }
     return(file)
   }else if(format == "rds"){
