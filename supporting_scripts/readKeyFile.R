@@ -9,9 +9,10 @@ readKeyFile <- function(keyFile, format){
   cols <- c("readNames", "seqID")
   cols.class <- c("character", "character")
   if(format == "csv"){
-    file <- try(data.table::fread(keyFile, sep = ",", data.table = FALSE))
+    file <- try(
+      data.table::fread(keyFile, sep = ",", data.table = FALSE), silent = TRUE)
     if(any(class(file) == "try-error")){
-      if(grepl("File is empty:", file[1])){
+      if(grepl("Input is either empty", file[1])){
         file <- read.table(text = "", col.names = cols, colClasses = cols.class)
       }else{
         stop("Error in loading key files. Check input files.")
@@ -19,9 +20,10 @@ readKeyFile <- function(keyFile, format){
     }
     return(file)
   }else if(format == "tsv"){
-    file <- try(data.table::fread(keyFile, sep = "\t", data.table = FALSE))
+    file <- try(
+      data.table::fread(keyFile, sep = "\t", data.table = FALSE), silent = TRUE)
     if(any(class(file) == "try-error")){
-      if(grepl("no lines available", file[1])){
+      if(grepl("Input is either empty", file[1])){
         file <- read.table(text = "", col.names = cols, colClasses = cols.class)
       }else{
         stop("Error in loading key files. Check input files.")
