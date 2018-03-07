@@ -1,4 +1,6 @@
 # blatCoupleR
+[![Build Status](https://travis-ci.org/cnobles/blatCoupleR.svg?branch=master)](https://travis-ci.org/cnobles/blatCoupleR)
+
 Join paired-end sequence alignments from BLAST-Like Alignment Tool (blat) output (psl format).
 
 ## arguments
