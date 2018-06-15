@@ -50,7 +50,7 @@ parser$add_argument(
 parser$add_argument(
   "--keepAltChr", action = "store_true", help = desc$keepAltChr)
 parser$add_argument(
-  "--readNamePattern", nargs = 1, type = "character", default = "[\\w:-]+",
+  "--readNamePattern", nargs = 1, type = "character", default = "[\\w:-+]+",
   help = desc$readNamePattern)
 parser$add_argument(
   "--saveImage", nargs = 1, type = "character", help = desc$saveImage)
