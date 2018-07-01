@@ -247,8 +247,8 @@ adrift_hits <- readPSL(args$adriftPSL)
 # This helps in identifying unique locations instead of alignments that appear
 # for both the standard and alternate chromosomes, becoming a multihit.
 if(!args$keepAltChr){
-  anchor_hits <- anchor_hits[!stringr::str_detect(anchor_hits$tName, "_alt$"),]
-  adrift_hits <- adrift_hits[!stringr::str_detect(adrift_hits$tName, "_alt$"),]
+  anchor_hits <- anchor_hits[!stringr::str_detect(anchor_hits$tName, stringr::fixed("_")),]
+  adrift_hits <- adrift_hits[!stringr::str_detect(adrift_hits$tName, stringr::fixed("_")),]
 }
 
 # Create base key if no key was supplied

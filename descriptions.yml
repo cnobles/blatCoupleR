@@ -14,6 +14,6 @@ maxAlignStart : "Maximum allowable distance from the start of the sequence to ke
 minPercentIdentity : "Minimal global (whole sequence) percent identity required to keep alignment. Default = 95 (0-100)."
 minTempLength : "Minimum value for paired template length to consider. Default = 30 (bps)."
 maxTempLength : "Maximum value for paired template length to consider. Default = 2500 (bps)."
-keepAltChr : "By default, blatCoupleR will remove alignments from psl files aligning to alternative chromosome sequences, ex. chr7_*_alt. Using this option will keep these alignments, which may increase multihit outputs."
+keepAltChr : "By default, blatCoupleR will remove alignments from psl files aligning to alternative chromosome, unknown, and random sequences, ex. chr7_*_alt. Using this option will keep these alignments, which may increase multihit outputs."
 readNamePattern : "Regular expression for pattern matching read names. Should not contain R1/R2/I1/I2 specific components. Default is [\\w:-]+"
 saveImage : "Output file name for saved image. Include '.RData'. ie. debug.RData"
