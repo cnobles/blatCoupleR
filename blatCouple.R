@@ -33,6 +33,8 @@ parser$add_argument(
 parser$add_argument(
   "--multihits", nargs = 1, type = "character", help = desc$multihits)
 parser$add_argument(
+  "--stat", nargs = 1, type = "character", default = FALSE, help = desc$stat)
+parser$add_argument(
   "-g", "--refGenome", nargs = 1, type = "character", default = "hg38",
   help = desc$refGenome)
 parser$add_argument(
@@ -73,9 +75,9 @@ input_table <- data.frame(
     paste(args[[i]], collapse = ", ")}))
 input_table <- input_table[
   match(c("anchorPSL :", "adriftPSL :", "keys :", "uniqOutput :", "condSites :", 
-          "chimeras :", "multihits :", "refGenome :", "maxAlignStart :", 
-          "minPercentIdentity :", "minTempLength :", "maxTempLength :", 
-          "readNamePattern :"),
+          "chimeras :", "multihits :", "stat :", "refGenome :", 
+          "maxAlignStart :", "minPercentIdentity :", "minTempLength :", 
+          "maxTempLength :", "readNamePattern :"),
         input_table$Variables),]
 pandoc.title("blatCoupleR Inputs")
 pandoc.table(data.frame(input_table, row.names = NULL), 
@@ -247,8 +249,10 @@ adrift_hits <- readPSL(args$adriftPSL)
 # This helps in identifying unique locations instead of alignments that appear
 # for both the standard and alternate chromosomes, becoming a multihit.
 if(!args$keepAltChr){
-  anchor_hits <- anchor_hits[!stringr::str_detect(anchor_hits$tName, stringr::fixed("_")),]
-  adrift_hits <- adrift_hits[!stringr::str_detect(adrift_hits$tName, stringr::fixed("_")),]
+  anchor_hits <- anchor_hits[
+    !stringr::str_detect(anchor_hits$tName, stringr::fixed("_")),]
+  adrift_hits <- adrift_hits[
+    !stringr::str_detect(adrift_hits$tName, stringr::fixed("_")),]
 }
 
 # Create base key if no key was supplied
@@ -284,6 +288,18 @@ pander(sprintf(
   nrow(adrift_hits),
   length(unique(adrift_hits$qName))))
 
+if(args$stat != FALSE){
+  sampleName <- unlist(strsplit(args$uniqOutput, "/"))
+  sampleName <- unlist(
+    strsplit(sampleName[length(sampleName)], ".", fixed = TRUE))[1]
+  stat <- data.frame(
+      sampleName = sampleName,
+      metric = c("seqs.aligning.anchor", "seqs.aligning.adrift"),
+      count = c(
+        length(unique(anchor_hits$qName)),
+        length(unique(adrift_hits$qName))))
+}
+
 # Stop if there are no alignments to couple.
 if(nrow(anchor_hits) == 0 | nrow(adrift_hits) == 0){
   message("No sequences aligned for at least one of the sequence pairs.")
@@ -298,21 +314,25 @@ adrift_hits <- adrift_hits[adrift_hits$qName %in% levels(keys$adriftSeqID),]
 # Quality filter and convert alignments from data.frame to GRanges
 anchor_hits <- qualityFilter(
   anchor_hits, args$maxAlignStart, args$minPercentIdentity)                     
+
 if(nrow(anchor_hits) == 0){
   message("No alignments remaining after quality filtering anchor reads.")
   write_null_output(args)
   q()
 }
+
 anchor_hits <- processBLATData(anchor_hits, "anchor", refGenome = refGenome)
 anchor_hits$anchorKey <- match(anchor_hits$qName, levels(keys$anchorSeqID))
 
 adrift_hits <- qualityFilter(
   adrift_hits, args$maxAlignStart, args$minPercentIdentity)
+
 if(nrow(adrift_hits) == 0){
   message("No alignments remaining after quality filtering adrift reads.")
   write_null_output(args)
   q()
 }
+
 adrift_hits <- processBLATData(adrift_hits, "adrift", refGenome = refGenome)
 adrift_hits$adriftKey <- match(adrift_hits$qName, levels(keys$adriftSeqID))
 
@@ -579,6 +599,14 @@ if(!is.null(args$chimeras)){
     chimera_alignments <- split(chimera_alignments, names(chimera_alignments))
   }
   
+  if(args$stat != FALSE){
+    add_stat <- data.frame(
+      sampleName = sampleName,
+      metric = "reads.chimera",
+      count = length(unique(chimera_reads$readNames)))
+    stat <- rbind(stat, add_stat)
+  }
+  
   chimeraData <- list(
     "read_info" = chimera_reads, "alignments" = chimera_alignments)
   writeOutputFile(chimeraData, file = args$chimeras, format = "rds")
@@ -621,6 +649,17 @@ panderHead(
     "Alignments yeilded %1$s unique anchor sites from %2$s properly-paired and aligned reads.",
     length(reduce(flank(uniq_sites, -1, start = TRUE), min.gapwidth = 0L)),
     length(uniq_sites)))
+
+if(args$stat != FALSE){
+  add_stat <- data.frame(
+    sampleName = sampleName,
+    metric = c("reads.unique", "algns.unique", "loci.uniq"),
+    count = c(
+      length(unique(uniq_sites$ID)), 
+      length(unique(uniq_sites)),
+      length(reduce(flank(uniq_sites, -1, start = TRUE), min.gapwidth = 0L))))
+  stat <- rbind(stat, add_stat)
+}
 
 # Generate condensed sites
 if(!is.null(args$condSites)){
@@ -765,16 +804,31 @@ if(!is.null(args$multihits)){
   
   writeOutputFile(multihitData, file = args$multihits, format = "rds")
   
-  if(length(unclustered_multihits) > 0){
   pandoc.table(
     data.frame(
       "multihit_reads" = length(unique(names(unclustered_multihits))),
       "multihit_alignments" = length(unique(unclustered_multihits)),
       "multihit_clusters" = length(clustered_multihit_positions),
-      "multihit_lengths" = sum(sapply(clustered_multihit_lengths, length))),
+      "multihit_lengths" = sum(lengths(clustered_multihit_lengths))),
     style = "simple",
     split.tables = Inf)
+  
+  if(args$stat != FALSE){
+    add_stat <- data.frame(
+      sampleName = sampleName,
+      metric = c("reads.multihit", "lengths.multihit", "clusters.multihit"),
+      count = c(
+        length(unique(names(unclustered_multihits))), 
+        sum(lengths(clustered_multihit_lengths)), 
+        length(clustered_multihit_positions)))
+    stat <- rbind(stat, add_stat)
   }
+}
+
+if(args$stat != FALSE){
+  write.table(
+    stat, file = args$stat, 
+    sep = ",", row.names = FALSE, col.names = FALSE, quote = FALSE)
 }
 
 if(!is.null(args$saveImage)){

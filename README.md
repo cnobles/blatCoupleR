@@ -22,6 +22,8 @@ Join paired-end sequence alignments from BLAST-Like Alignment Tool (blat) output
   
   **[--multihits]** Output file for multihit alignments. Same file types supported as uniqOutput.
   
+  **[--stat]** File name to be written in output directory of read couts for each sample. CSV file format. ie. test.stat.csv.
+
   **[-g, --refGenome]** Reference genome, needs to be installed through BSgenome (BioConductor).
   
   **[--maxAlignStart]** Maximum allowable distance from the start of the sequence to keep the alignment. Default = 5.

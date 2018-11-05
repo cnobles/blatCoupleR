@@ -86,4 +86,15 @@ write_null_output <- function(args){
       file = args$multihits,
       format = "rds")
   }
+  if(args$stat != FALSE){
+    if(exists("stat")){
+      write.table(
+        stat, file = args$stat,
+        sep = ",", row.names = FALSE, col.names = FALSE, quote = FALSE)
+    }else{
+      write.table(
+        data.frame(), file = args$stat,
+        sep = ",", row.names = FALSE, col.names = FALSE, quote = FALSE)
+    }
+  }
 }
