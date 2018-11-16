@@ -141,6 +141,17 @@ if(grepl(".fa", args$refGenome)){
   refGenome <- get(genome)
 }
 
+## Set up stat object
+if(args$stat != FALSE){
+  sampleName <- unlist(strsplit(args$uniqOutput, "/"))
+  sampleName <- unlist(
+    strsplit(sampleName[length(sampleName)], ".", fixed = TRUE))[1]
+  stat <- data.frame(
+      sampleName = vector("character"),
+      metric = vector("character"),
+      count = vector("character"))
+}
+
 ## Load and process alignment data ##
 # Create single key file if one for each alignment file.
 if(length(args$keys) > 1){
@@ -287,18 +298,6 @@ pander(sprintf(
   "\nAdrift Alignments: %1$s from %2$s reads\n\n", 
   nrow(adrift_hits),
   length(unique(adrift_hits$qName))))
-
-if(args$stat != FALSE){
-  sampleName <- unlist(strsplit(args$uniqOutput, "/"))
-  sampleName <- unlist(
-    strsplit(sampleName[length(sampleName)], ".", fixed = TRUE))[1]
-  stat <- data.frame(
-      sampleName = sampleName,
-      metric = c("seqs.aligning.anchor", "seqs.aligning.adrift"),
-      count = c(
-        length(unique(anchor_hits$qName)),
-        length(unique(adrift_hits$qName))))
-}
 
 # Stop if there are no alignments to couple.
 if(nrow(anchor_hits) == 0 | nrow(adrift_hits) == 0){
@@ -602,7 +601,7 @@ if(!is.null(args$chimeras)){
   if(args$stat != FALSE){
     add_stat <- data.frame(
       sampleName = sampleName,
-      metric = "reads.chimera",
+      metric = "chimera.reads",
       count = length(unique(chimera_reads$readNames)))
     stat <- rbind(stat, add_stat)
   }
@@ -653,7 +652,7 @@ panderHead(
 if(args$stat != FALSE){
   add_stat <- data.frame(
     sampleName = sampleName,
-    metric = c("reads.unique", "algns.unique", "loci.uniq"),
+    metric = c("unique.reads", "unique.algns", "unique.loci"),
     count = c(
       length(unique(uniq_sites$ID)), 
       length(unique(uniq_sites)),
@@ -816,7 +815,7 @@ if(!is.null(args$multihits)){
   if(args$stat != FALSE){
     add_stat <- data.frame(
       sampleName = sampleName,
-      metric = c("reads.multihit", "lengths.multihit", "clusters.multihit"),
+      metric = c("multihit.reads", "multihit.lengths", "multihit.clusters"),
       count = c(
         length(unique(names(unclustered_multihits))), 
         sum(lengths(clustered_multihit_lengths)), 
